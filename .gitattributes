@@ -1,0 +1,2 @@
+# cmd's goto is unreliable on LF-only batch files
+*.cmd text eol=crlf

@@ -90,6 +90,7 @@ automatically from your Languages table above - don't duplicate them here. -->
 ## Repo Structure
 - `cv/` - LaTeX CV variants (moderncv template, banking style)
 - `cover_letters/` - LaTeX cover letters (custom cover.cls template)
+- `daily/` - Morning `/daily` delivery, the local jobs page server and the application tracker page
 - `.claude/skills/` - AI skill definitions for the application workflow
 - `.agents/skills/` - Job search CLI tools
 
@@ -101,6 +102,9 @@ automatically from your Languages table above - don't duplicate them here. -->
 5. Prepare interview talking points based on the role requirements and your strengths
 
 **Important:** When mentioning agentic coding or AI tooling in CVs/cover letters, explicitly reference **Claude Code** by name.
+
+## Daily Jobs Page and Application Tracker
+When the user says they applied to a job or that a job is a top job, or asks about the "I applied" and "Top job" checkboxes or the tracker page, read `.claude/skills/job-application-assistant/10-recording-applications.md` first and follow it.
 
 ## Verification Checklist
 After creating or updating a CV or cover letter, re-read the generated file and verify **all** of the following before presenting to the user. Report the results as a pass/fail checklist.

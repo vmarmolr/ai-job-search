@@ -1,0 +1,85 @@
+%% HBS-classic CV template (single column, Calibri, uppercase ruled headings)
+%% Compile with lualatex (fontspec). See TEMPLATE.md for style rules.
+
+\documentclass{article}
+
+\usepackage{fontspec}
+\setmainfont{Calibri}
+% article only offers 10/11/12pt; 10.5pt matches the reference CV
+\AtBeginDocument{\fontsize{10.5pt}{12.6pt}\selectfont}
+\usepackage[letterpaper,top=0.5in,bottom=0.5in,left=0.6in,right=0.6in]{geometry}
+\usepackage{xcolor}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\hypersetup{
+    colorlinks=true,
+    urlcolor=blue!70!black,
+    pdftitle={[YOUR_NAME] - CV},
+    pdfpagemode=UseNone,
+}
+
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0pt}
+\linespread{1.0}
+% No hyphenation: a word split across lines reaches ATS parsers (Workday) as two fragments
+\hyphenpenalty=10000
+\exhyphenpenalty=10000
+\emergencystretch=1.5em
+
+% Section headings: uppercase bold, full-width rule underneath
+\titleformat{\section}{\normalsize\bfseries}{}{0pt}{\MakeUppercase}[\vspace{1pt}\titlerule]
+\titlespacing*{\section}{0pt}{8pt}{3pt}
+
+% Bullets: round dot, indented, tight
+\setlist[itemize]{label=\textbullet, leftmargin=0.32in, itemsep=0pt, topsep=1pt, parsep=0pt}
+
+% \org{Organization}{Location}        bold org left, location right
+% \role{Title}{Dates}                 title left (bold the core title yourself), dates right
+\newcommand{\org}[2]{\textbf{#1}\hfill #2\par}
+\newcommand{\role}[2]{#1\hfill #2\par}
+
+\begin{document}
+
+% ---------------- Header ----------------
+\begin{center}
+{\fontsize{18pt}{20pt}\selectfont\bfseries [YOUR_NAME_UPPERCASE]}\par
+\vspace{2pt}
+[YOUR_CITY] | [YOUR_PHONE] | \href{mailto:[YOUR_EMAIL]}{[YOUR_EMAIL]}\par
+\href{[YOUR_LINKEDIN_URL]}{[YOUR_LINKEDIN_LABEL]} | \href{[YOUR_PORTFOLIO_URL]}{Portfolio}\par
+\end{center}
+
+% ---------------- Profile (optional, 2-4 lines) ----------------
+\section{Profile}
+[PROFILE_STATEMENT]
+
+% ---------------- Skills ----------------
+\section{Technical Skills}
+\textbf{[SKILL_CATEGORY_1]}: [SKILLS]\par
+\textbf{[SKILL_CATEGORY_2]}: [SKILLS]\par
+
+% ---------------- Experience ----------------
+\section{Experience}
+\org{[COMPANY]}{[CITY, COUNTRY]}
+\role{\textbf{[JOB_TITLE]}, [DEPARTMENT]}{[Mon YYYY - Mon YYYY]}
+\begin{itemize}
+    \item {[Achievement with \textbf{key metric} highlighted]}
+    \item {[Achievement]}
+\end{itemize}
+
+% ---------------- Education ----------------
+\section{Education}
+\org{[INSTITUTION]}{[CITY, COUNTRY]}
+\role{[DEGREE] \textit{([STATUS, e.g. In progress, expected Month Year])}}{[Mon YYYY - Mon YYYY]}
+
+% ---------------- Leadership ----------------
+% "Experience" in the heading: Workday read "Leadership & Community Engagement" as a company name
+\section{Leadership \& Community Experience}
+\org{[ORGANIZATION]}{[CITY]}
+\role{\textbf{[ROLE]}}{[Mon YYYY - Mon YYYY]}
+\begin{itemize}
+    \item {[Contribution]}
+\end{itemize}
+
+\end{document}

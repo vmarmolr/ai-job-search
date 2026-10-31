@@ -2,6 +2,8 @@
 
 Step-by-step instructions for getting the AI Job Search framework running.
 
+Sections 1-8 come from the original project. The features this fork adds are in [section 9](#9-optional-daily-delivery-and-application-tracker-this-fork).
+
 ## 1. Prerequisites
 
 ### Claude Code
@@ -326,6 +328,60 @@ Upstream keeps improving the methodology files your fork has personalized, so pl
 
      Forks also inherit a `.github/workflows/upstream-watch.yml` that runs this weekly and writes the result into a single rolling issue (it no-ops on the upstream template itself, and stays disabled on a fork until you enable Actions).
 3. **Merge normally.** `git merge upstream/master` (or `git pull`) three-way-merges upstream's edits around your personalization; because methodology edits rarely touch the lines `/setup` filled in, most updates land cleanly. A conflict in a personalized file is a *feature*, not a failure — it means upstream changed methodology in a section you customized, and the version marker plus its changelog commit tell you why. Resolve by keeping your data and adopting the methodology change around it.
+
+## 9. Optional: Daily delivery and application tracker (this fork)
+
+These features exist only in this fork, so clone it rather than the original project:
+
+```bash
+git clone https://github.com/vmarmolr/ai-job-search.git
+```
+
+Then finish sections 1-4 above. On top of those prerequisites:
+
+- `pip install pypdf`. `tools/build_cvs.py` needs it, although it is optional for `/apply`.
+- Install Poppler for visual PDF checks (see [Optional: ATS text extraction](#optional-ats-text-extraction-pypdf-then-pdftotext)). Without it the layout check in `build_cvs.py` is skipped.
+- Put your real CV in `cv/main_example.tex`. `/daily-cvs` tailors from that file.
+- Optional: connect the Indeed connector for Claude. `/scrape` skips it when it is not connected.
+
+### Pages
+
+```bash
+python3 daily/server.py        # then open http://localhost:8765/
+```
+
+The server listens on `127.0.0.1:8765` and stops when you close the terminal. The tracker is at http://localhost:8765/applications. For a tracker that already has rows, run `python3 daily/tracker_cli.py migrate` once. It backs up `job_search_tracker.csv` and `daily/applied.json` to `daily/backups/` first.
+
+**Windows only:** `daily/Open daily jobs.cmd` starts the server with `pythonw` and opens the page.
+
+### Scheduled delivery (Windows only)
+
+`daily/run_daily.cmd` finds the repo from its own location, starts the page server, then runs the four phases: `/daily-scrape` on Haiku, `/daily` on Sonnet, `/daily-cvs` on Opus and `/daily-page` on Sonnet. Run it once by hand to confirm that your portals, LaTeX and Claude Code login work:
+
+```powershell
+daily\run_daily.cmd
+```
+
+Then register it from the repo root in PowerShell:
+
+```powershell
+$action  = New-ScheduledTaskAction -Execute "$PWD\daily\run_daily.cmd"
+$trigger = New-ScheduledTaskTrigger -Daily -At 7am
+Register-ScheduledTask -TaskName "AI Job Search Daily" -Action $action -Trigger $trigger
+```
+
+Each day's output goes to `daily/<date>/`. A run that fails retries about 20 minutes later, up to 3 attempts, and skips any phase whose output file exists. Once `daily/<date>/index.html` exists, that day is done and further runs only open the page. Jobs recorded in `daily/delivered.json` are never shown again.
+
+Outside Windows there is no scheduler script; see [Fork features: quick start](README.md#fork-features-quick-start) in the README.
+
+### Daily run problems
+
+- **No page and no log entry:** check that the task ran, and that `claude` is on `PATH` or at `%USERPROFILE%\.local\bin\claude.exe`.
+- **No page after 3 attempts:** `daily/logs/runner.log` records each attempt and exit code, and `daily/logs/<date>.log` holds the output of each phase.
+- **`ModuleNotFoundError: pypdf` from `build_cvs.py`:** run `pip install pypdf` for the same Python that the run uses.
+- **The checkboxes are missing:** the page was opened as a file. Open it through `http://localhost:8765/` with the server running.
+- **A tracker save fails with a read or save error:** close `job_search_tracker.csv` if it is open in Excel, then try again.
+- **`layout: skipped (no Poppler)` in a build report, or `NOT-RENDERED` from `cv-visual-checker`:** install Poppler, or check that PDF yourself.
 
 ## Troubleshooting
 

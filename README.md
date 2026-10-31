@@ -21,6 +21,8 @@
 </p>
 
 <p align="center">
+  <a href="#what-this-fork-adds"><b>What this fork adds</b></a>
+  &nbsp;&nbsp;&nbsp;
   <a href="#quick-start"><b>Quick start</b></a>
   &nbsp;&nbsp;&nbsp;
   <a href="#commands"><b>Commands</b></a>
@@ -36,6 +38,74 @@
 > This is an independent open-source project and is not affiliated with, endorsed by, sponsored by, or maintained by Anthropic. Anthropic and Claude Code are referenced only to describe the toolchain this workflow uses.
 >
 > This project has **no affiliated cryptocurrency, token, or paid sponsorship program**. Anything claiming otherwise is unauthorized and should be treated as a scam. The only ways to support the project are the Ko-fi link below and contributing on GitHub.
+
+## What this fork adds
+
+This repository is a fork of [ai-job-search-dev/ai-job-search](https://github.com/ai-job-search-dev/ai-job-search), created by Mads Lorentzen and developed by its contributors. The framework, its workflow and most of this README are theirs, so "I" in the next section means the original author. This fork is maintained separately and the original project does not support it.
+
+The original gives you `/scrape`, `/rank`, `/apply`, `/interview`, `/outcome`, a CSV tracker and the `/html-report` dashboard, each started by hand. Those commands all remain. The fork adds a scheduled morning run and two local pages on top of them, plus scripts that move bulky work out of the model's context. The licence stays [MIT](LICENSE), with the original copyright notice kept.
+
+**Unattended daily delivery** *(Windows only: Task Scheduler and `daily/run_daily.cmd`)*. Each run has four phases. Every phase is a fresh Claude Code conversation with its own model:
+
+| Phase | Model | Work | Leaves behind |
+|---|---|---|---|
+| `/daily-scrape` | Haiku | Searches the job portals | `scrape_done.txt` |
+| `/daily` | Sonnet | Ranks new jobs, picks 5-10 never shown before, saves their postings | `picks.json`, `fetch_done.txt` |
+| `/daily-cvs` | Opus | Writes one tailored CV per pick, compiles and checks them | `cvs_done.txt` |
+| `/daily-page` | Sonnet | Writes the jobs page and records what was delivered | `index.html` |
+
+If a run dies, for example on an API overload or a usage limit, the script waits about 20 minutes and tries again, up to 3 attempts a day. A phase whose output file already exists is skipped, and a CV whose PDF already exists is not rebuilt, so a retry keeps finished work. Nothing is ever submitted or sent: you read the page and apply yourself.
+
+**Daily jobs page** at `http://localhost:8765/`. Each job card shows the score, strengths, gaps, an Apply link and the tailored CV, and the local server adds these controls:
+
+- **I applied** adds a row to `job_search_tracker.csv` and archives the saved posting and CV under `documents/applications/`. Unticking undoes this, unless `/outcome` has already moved the row on.
+- **Top job** marks the jobs you like best (see below).
+- **Write cover letter** starts a headless Claude Code run for that job and links the PDF when it finishes.
+
+**Top job marks.** Marks feed future runs in three ways, and unticking a job removes its effect on the next run:
+
+- Up to 4 extra searches per scrape: role titles from marked jobs that your search queries do not already cover, then any company with 2 or more marks.
+- When there are more new jobs than `/rank` will score, jobs similar to the marks are scored first.
+- An ordering bonus of at most 8 points, the average of the 3 closest marks, so one mark alone gives at most a third of that.
+
+Marks never change a job's score, a score cut-off or a deal-breaker. A job with a location or language flag, or a posting flagged by the integrity gate, gets no bonus. With no marks, nothing changes.
+
+**Application tracker** at `http://localhost:8765/applications`.
+
+- **Fields:** company, job title, date applied, status, location, salary, recruiter or contact, posting link, follow-up date, notes and the full job description. `job_search_tracker.csv` keeps its 14 columns, and fields it has no column for live in `daily/tracker_data.json`, so `/apply`, `/outcome` and `/gmail-sync` keep working. `/apply` and `/outcome` record the extra fields through `daily/tracker_cli.py`.
+- **Views:** a list with search, status filters and four sort orders, and a pipeline board with five stages (applied, interviewing, offer received, rejected, withdrawn) where you drag a card to change its stage. An overview above both shows follow-ups due, upcoming interviews and applications per week for the last 8 weeks.
+- **Follow-ups:** due 7 days after applying by default. You can move a date, mark it not needed, or log one as sent, which sets the next date 7 days later. After the second logged follow-up, no more are scheduled.
+- **Interviews:** date, time, format (phone, video, in person), who with, and notes. Adding one to an application still at "applied" moves it to "interviewing".
+- **Saved job descriptions:** kept as `documents/applications/<company>_<role>/job_posting.md`, because postings disappear. Text you paste goes through the same integrity gate as fetched postings, and a saved copy is never overwritten. Location and salary are filled from the saved posting when you have not entered them.
+
+**Token reduction tooling.** A single conversation carrying every search result, posting, draft and PDF is expensive, because each turn resends all of it. These tools keep that material out of the conversation:
+
+| Tool | What it replaces |
+|---|---|
+| [`tools/fetch_posting.py`](tools/fetch_posting.py) | An agent per posting: a script fetches through the portal CLI, runs the integrity gate and saves the text. Other hosts still fall back to the `posting-fetcher` agent. |
+| [`tools/cv_from_master.py`](tools/cv_from_master.py) | Retyping a whole CV: only changed sections are written, and the rest is copied from the master CV byte for byte. |
+| [`tools/build_cvs.py`](tools/build_cvs.py) | A model turn per compile and check: one call compiles and checks every CV and prints a short PASS or FAIL report. |
+| [`cv-visual-checker`](.claude/agents/cv-visual-checker.md) | Page images in the main conversation: a read-only agent looks at the PDFs and returns one line per file. |
+
+The savings are estimates. They have not been measured on a real run, and this repo publishes no token figures.
+
+**Optional `hbs-classic` CV template** in `templates/cv/hbs-classic/`: single column with no hyphenation, written for ATS imports such as Workday. It uses Letter paper and `lualatex`, and needs Calibri, or change `\setmainfont` to a font you have, such as Carlito. The stock templates stay the default until you switch with `/add-template --use hbs-classic`.
+
+**Smaller changes to existing commands.** `/scrape` can also search Indeed through the optional Indeed connector for Claude. `/rank` scores from the Indeed copies `/scrape` saved, and orders its shortlist with Top job marks. The `posting-fetcher` and `posting-scorer` agents are set to Sonnet.
+
+### Requirements for the fork features
+
+| | |
+|---|---|
+| **[Claude Code](https://claude.com/claude-code)** | Logged in, and on `PATH` or at the default per-user install location. A daily run uses Haiku, Sonnet and Opus. |
+| **Python 3.10+** | The page server and tracker use only the standard library. On Windows the scripts call `python` and `pythonw`. |
+| **pypdf** | `pip install pypdf`. Optional in the original, but `tools/build_cvs.py` needs it. |
+| **[Bun](https://bun.sh)** | Runs the portal CLIs. Install them as in [Quick start](#2-install-job-search-tools). |
+| **LaTeX** | `lualatex` for CVs, `xelatex` for cover letters. |
+| **Poppler** | For visual PDF checks. `tools/verify_layout.py` needs `pdftotext -bbox`, and without it `build_cvs.py` skips the layout check. If Claude Code cannot render a PDF, `cv-visual-checker` reports `NOT-RENDERED` rather than guessing. Windows: `choco install poppler`. |
+| **Windows** | Only for the scheduled run, `daily/Open daily jobs.cmd` and the optional launcher. |
+
+Commands are in [Fork features: quick start](#fork-features-quick-start).
 
 ## Does it actually work?
 
@@ -163,7 +233,7 @@ This runs the full workflow: evaluate fit, draft CV + cover letter, review with 
 
 ## Commands
 
-`/setup`, `/scrape`, and `/apply` form the core workflow. Ten more commands extend it once your profile is in place.
+`/setup`, `/scrape`, and `/apply` form the core workflow. Twelve more commands extend it once your profile is in place.
 
 | Command | What it does |
 |---|---|
@@ -171,6 +241,7 @@ This runs the full workflow: evaluate fit, draft CV + cover letter, review with 
 | **`/scrape`** | Searches job portals for postings that match your profile |
 | **`/apply`** | Evaluates fit, then drafts, reviews, and compiles a tailored CV and cover letter |
 | `/rank` | Batch-scores a scrape into a ranked shortlist |
+| `/daily` | This fork: unattended morning delivery of new jobs, tailored CVs and a local page (see [Fork features: quick start](#fork-features-quick-start)) |
 | `/interview` | Builds a stage-specific prep pack and runs a mock interview |
 | `/outcome` | Records results, archives what you sent, and drafts follow-ups |
 | `/gmail-sync` | Proposes application status updates from your Gmail |
@@ -227,6 +298,75 @@ All claims in the CV and cover letter are verified against your actual profile. 
 - **Token-efficient reviewer dispatch.** The reviewer agent receives drafts inline rather than re-reading them, and the verification checklist runs once at the end of the workflow rather than being duplicated by both agents. Note: the new compile-and-inspect step in Step 5 spends some of those savings on PDF rendering and layout iteration — the workflow trades some end-to-end token cost for a real reduction in broken PDFs reaching the user.
 
 </details>
+
+## Fork features: quick start
+
+What these features do is described in [What this fork adds](#what-this-fork-adds). Commands below use `python3`; on Windows use `python`.
+
+**1. Get this fork.** The quick start above clones the original project, which does not have these features.
+
+```bash
+git clone https://github.com/vmarmolr/ai-job-search.git
+cd ai-job-search
+python3 tools/install_portal_clis.py
+pip install pypdf
+```
+
+Then run `/setup` as in [step 3](#3-set-up-your-profile). `/daily-cvs` tailors from `cv/main_example.tex`, so that file must hold your real CV first.
+
+> [!IMPORTANT]
+> `/setup` writes personal data into tracked files, so do not push it to a public fork. Use a private repository, as [SETUP.md section 8](SETUP.md#8-pulling-upstream-updates-into-your-fork) describes. Everything `daily/` writes is gitignored: day folders, logs, backups, `applied.json`, `delivered.json`, `top_jobs.json`, `tracker_data.json` and `focus_roles.txt`.
+
+**2. Open the pages.**
+
+```bash
+python3 daily/server.py        # then open http://localhost:8765/
+```
+
+The tracker is at http://localhost:8765/applications. The server listens on `127.0.0.1` only, and tracker requests naming any other host or origin are refused. It works before any daily run, so you can use the tracker on its own.
+
+*Windows only:* double-click `daily/Open daily jobs.cmd` instead. It finds the repo from its own location, starts the server and opens the page. The optional `daily/launcher/OpenDailyJobs.cs` builds a small `.exe` that does the same (build command at the top of the file; the `.exe` is not committed).
+
+If you already have rows in `job_search_tracker.csv`, give them tracker data. This backs up the CSV to `daily/backups/` first and is safe to re-run:
+
+```bash
+python3 daily/tracker_cli.py migrate
+```
+
+**3. Run a delivery by hand** *(Windows only)*. Do this once before you schedule it. It takes the same steps as the scheduled run, so it uses Opus and real tokens:
+
+```powershell
+daily\run_daily.cmd
+```
+
+Progress goes to `daily\logs\runner.log` and `daily\logs\<date>.log`. The page appears at `http://localhost:8765/<date>/`.
+
+**4. Schedule it** *(Windows only)*. From the repo root in PowerShell, with the time you want:
+
+```powershell
+$action  = New-ScheduledTaskAction -Execute "$PWD\daily\run_daily.cmd"
+$trigger = New-ScheduledTaskTrigger -Daily -At 7am
+Register-ScheduledTask -TaskName "AI Job Search Daily" -Action $action -Trigger $trigger
+```
+
+**5. Optional settings.**
+
+- To put some roles first, list title fragments one per line in `daily/focus_roles.txt`. Without the file every role is treated alike.
+- To see what your Top job marks have in common, and the extra searches they add: `python3 daily/daily_state.py top prefs`.
+- To use the `hbs-classic` CV template, run `/add-template --use hbs-classic` in Claude Code.
+- To record tracker fields from the command line, on a row that already exists: `python3 daily/tracker_cli.py capture --company "Acme" --role "Data Analyst" --follow-up 2026-11-15`.
+
+The token tools also work by hand:
+
+```bash
+python3 tools/fetch_posting.py --url <URL> --out daily/<date>/postings/<n>_<slug>.md
+python3 tools/cv_from_master.py --sections <n>.sections.tex --out <n>.tex
+python3 tools/build_cvs.py daily/<date> --only 2 5
+```
+
+**Outside Windows.** The page server and tracker are plain Python, but there is no scheduler script. You can call `claude -p "/daily"` from cron with an `--allowedTools` list adapted from `daily/run_daily.cmd`. That runs all four phases in one conversation on one model, so the per-phase models and retries do not apply, and the step that opens the page uses `cmd`, so open it yourself. No test covers this route.
+
+**What the scheduled run may do.** `daily/run_daily.cmd` runs Claude Code with `--permission-mode acceptEdits`, an explicit `--allowedTools` list and `--setting-sources project`, which skips your user plugins, hooks and instructions. Read that list before you schedule it. Postings stay untrusted input, as described in [SECURITY.md](SECURITY.md), and portal terms still apply to a daily search, so keep query volume low on portals marked personal use only.
 
 ## Customization
 
@@ -369,6 +509,7 @@ ai-job-search/
 │   │   ├── add-template.md            # /add-template register custom templates (LaTeX, Typst, ...)
 │   │   ├── add-portal.md              # /add-portal generate a job-portal search skill for your market
 │   │   ├── rank.md                    # /rank triage scraped jobs into a ranked shortlist
+│   │   ├── daily*.md                  # This fork: the four phases of the /daily run
 │   │   ├── outcome.md                 # /outcome record application results, archive materials
 │   │   ├── gmail-sync.md              # /gmail-sync auto-detect application status from Gmail
 │   │   ├── interview.md               # /interview stage-specific prep pack + mock interview
@@ -402,7 +543,9 @@ ai-job-search/
 │   ├── cover.cls                      # Custom cover letter LaTeX class
 │   ├── cover_example.tex              # Example cover letter (structural reference + CI smoke test)
 │   └── OpenFonts/                     # Lato + Raleway fonts
+├── daily/                             # This fork: /daily delivery, local jobs page server, application tracker
 ├── templates/                         # Custom templates registered via /add-template
+│   ├── cv/hbs-classic/                # This fork: optional single-column CV template
 │   └── README.md                      # Folder layout instructions
 ├── documents/                         # Career source materials for /setup Path A and /expand
 │   ├── README.md                      # Folder layout instructions
@@ -414,10 +557,13 @@ ai-job-search/
 ├── .github/workflows/ci.yml           # CI: LaTeX smoke compiles, skill lint, CLI typechecks
 ├── salary_lookup.py                   # Salary benchmarking tool (BYO data)
 ├── tools/
+│   ├── build_cvs.py                   # This fork: compile and check every CV in a folder in one call
 │   ├── check_framework_version.py     # CI check: framework_version bumped when skill files change
 │   ├── check_upstream_updates.py      # Preview which personalized files an upstream update touches
 │   ├── convert_salary_excel.py        # Convert salary Excel to JSON
+│   ├── cv_from_master.py              # This fork: build a CV from the master plus changed sections
 │   ├── fetch_page.py                  # GET-only browser-header retry for 403s (robots.txt enforced)
+│   ├── fetch_posting.py               # This fork: fetch, gate and save a posting without an agent
 │   ├── install_portal_clis.py         # Install every discovered portal CLI (bun install)
 │   ├── lint_skills.py                 # CI lint for skills, commands, settings.json
 │   ├── posting_guard.py               # Integrity gate: strip hidden text, flag injection-shaped lines
@@ -438,16 +584,17 @@ ai-job-search/
 
 ## Contributing
 
-Thinking about a PR? Read [CONTRIBUTING.md](CONTRIBUTING.md) first - it explains what gets merged, what lives in forks, and why.
+Thinking about a PR? Read [CONTRIBUTING.md](CONTRIBUTING.md) first - it explains what gets merged, what lives in forks, and why, and where changes to this fork's features go.
 
 ## Acknowledgements
 
 - [Mikkel Krogholm](https://github.com/mikkelkrogsholm) ([skills repo](https://github.com/mikkelkrogsholm/skills)) for the job search CLI skills
 - Built with [Claude Code](https://claude.com/claude-code) by [Anthropic](https://anthropic.com)
+- This fork builds on [ai-job-search-dev/ai-job-search](https://github.com/ai-job-search-dev/ai-job-search)
 
 ## License
 
-MIT
+MIT. This fork keeps the original licence.
 
 <p align="center">
   <img src="assets/mascot/pip_flight_loop.gif" alt="Pip, the courier bird" width="120"><br>

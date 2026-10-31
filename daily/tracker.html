@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Application tracker</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/tracker/tracker.css">
+</head>
+<body>
+<div class="page">
+  <header class="mast">
+    <div>
+      <p class="eyebrow"><a href="/">Daily jobs</a> <span aria-hidden="true">/</span> <span id="today"></span></p>
+      <h1>Application tracker</h1>
+    </div>
+    <div class="mast-actions">
+      <button type="button" class="icon-btn" id="theme" aria-label="Switch between light and dark"></button>
+      <button type="button" class="btn primary" id="add">Add application</button>
+    </div>
+  </header>
+
+  <div id="error" class="banner" role="alert" hidden></div>
+  <section id="overview" class="overview" aria-label="Overview"></section>
+
+  <section id="work" aria-label="Applications">
+    <div class="toolbar">
+      <input id="search" type="search" placeholder="Search company, role, location, notes" aria-label="Search applications">
+      <div class="chips" id="chips" role="group" aria-label="Filter by status"></div>
+      <div class="toolbar-end">
+        <label class="sort">Sort
+          <select id="sort">
+            <option value="attention">Needs attention</option>
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+            <option value="company">Company</option>
+          </select>
+        </label>
+        <div class="switch" role="group" aria-label="View">
+          <button type="button" data-view="list">List</button>
+          <button type="button" data-view="board">Pipeline</button>
+        </div>
+      </div>
+    </div>
+    <div id="results"></div>
+  </section>
+  <p class="foot" id="foot"></p>
+</div>
+
+<div id="scrim" class="scrim" hidden></div>
+<aside id="drawer" class="drawer" role="dialog" aria-modal="true" aria-label="Application details" hidden></aside>
+
+<dialog id="add-dialog" class="add-dialog">
+  <form id="add-form" method="dialog">
+    <h2>Add an application</h2>
+    <p class="hint">Saved to job_search_tracker.csv straight away, along with the job description if you paste it.</p>
+    <div class="grid">
+      <label>Company <input name="company" required autocomplete="off"></label>
+      <label>Job title <input name="role" required autocomplete="off"></label>
+      <label>Date applied <input name="date" type="date" required></label>
+      <label>Status <select name="status"></select></label>
+      <label>Location <input name="location" autocomplete="off"></label>
+      <label>Salary <input name="salary" autocomplete="off"></label>
+      <label>Recruiter or contact <input name="contact" autocomplete="off"></label>
+      <label>Follow-up date <input name="follow_up" type="date"><small id="add-follow"></small></label>
+      <label class="wide">Posting link <input name="source" type="url" placeholder="https://" autocomplete="off"></label>
+      <label class="wide">Full job description <textarea name="jd" rows="7" placeholder="Paste it now. Postings disappear."></textarea></label>
+      <label class="wide">Notes <textarea name="notes" rows="3"></textarea></label>
+    </div>
+    <p class="form-error" id="add-error" role="alert" hidden></p>
+    <div class="row-end">
+      <button type="button" class="btn" id="add-cancel">Cancel</button>
+      <button type="submit" class="btn primary">Save application</button>
+    </div>
+  </form>
+</dialog>
+
+<div id="toast" class="toast" role="status" hidden></div>
+<script src="/tracker/tracker.js"></script>
+</body>
+</html>

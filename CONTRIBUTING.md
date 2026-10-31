@@ -2,6 +2,15 @@
 
 Thanks for considering a contribution! This repo has a deliberate, narrow philosophy, and most declined PRs are well-executed work that simply didn't know about it. Read this first; it will save you effort and tell you where your work will land best.
 
+## This fork
+
+The rest of this file is the original project's policy and describes [ai-job-search-dev/ai-job-search](https://github.com/ai-job-search-dev/ai-job-search). For this fork:
+
+- **Changes to what the fork adds** (`daily/`, the `/daily` phases, `tools/build_cvs.py`, `tools/cv_from_master.py`, `tools/fetch_posting.py`, `templates/cv/hbs-classic/`): open a pull request against [vmarmolr/ai-job-search](https://github.com/vmarmolr/ai-job-search). Issues are currently turned off on the fork.
+- **Changes to the core framework:** send them to the original project, under the rules below. Check the "base repository" dropdown before you publish, whichever one you mean.
+- **Before you open a pull request:** run `python -m pytest tests -q` and `python tools/lint_skills.py`. Keep real names, contact details and job-search data out of code, tests and docs, and use neutral examples such as Acme.
+- **`CHANGELOG.md` stays frozen** here as well. Describe the change in the commit message and update the README when behaviour changes.
+
 ## The one rule everything follows from
 
 **This repo is a universal template.** People fork it and adapt it to their own market, language, and profile. Upstream stays market-agnostic, person-agnostic, and Claude Code-native. The corollary: a contribution is judged by fit to this rule first, execution quality second. Well-built but off-policy still gets declined (kindly, with reasons).

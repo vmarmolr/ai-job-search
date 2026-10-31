@@ -48,6 +48,8 @@ Read `search-queries.md` (this directory) for the search strategy. `tools/scrape
 
 Read `search-queries.md` (this directory) for the search strategy. By default, run the top 3 priority query categories. If the user said "broad", run all categories. If the user specified a focus area (e.g. "data science"), prioritize queries from that category.
 
+Then run `python3 daily/daily_state.py top prefs`. When it returns `"active": true`, add each entry of its `queries` list (at most 4) as one extra title, searched like the others on every enabled portal and on the Indeed connector. They are derived from the jobs the user ticked "Top job" on. `"active": false` means no extra searches. The rest of its output is context only; every result still goes through the same dedup, filters and ranking.
+
 **Use the installed CLI tools as the primary search mechanism.** Fall back to `WebSearch` only for portals that do not have a CLI skill, or if `bun` is unavailable on the system.
 
 #### 1a. Check bun availability
@@ -75,6 +77,16 @@ For each **enabled** portal skill:
 Run all portal CLI calls in parallel where possible using the Agent tool. Collect all `results` arrays into a single pool for Step 2, keeping each result tagged with its source portal skill (for Step 2 `detail` lookups).
 
 If a CLI tool exits with a non-zero code, log the error message and continue — do not abort the whole search.
+
+#### 1b-2. Connector portals (Indeed, optional)
+
+If the **Indeed connector** is connected (MCP tools `mcp__claude_ai_Indeed__search_jobs` / `mcp__claude_ai_Indeed__get_job_details`), search Indeed through it. Portal tag: `indeed-connector`; source: `connector`. If the tools are not available in this session, skip this step; when the user has an Indeed site listed in `search-queries.md`, cover it with Step 1c `site:` queries instead and report it on the `fallback (websearch):` line.
+
+Call these tools from the main session, not from an Agent: subagents do not get the connector, and the job IDs it returns only live for the session that made them.
+
+1. For each query category being run, call `search_jobs` with `search` = a title variant from `search-queries.md` (plain keywords, no `site:` or quotes), `location` = the user's city from `CLAUDE.md`, `country_code` = their two-letter country code. Leave `job_type` unset (contract and temp roles are in scope). Use 2-3 title variants per category; each call returns ~10 results and has no limit or recency flag.
+2. Parse each result's `Job Title`, `Company`, `Location`, `Posted on` (convert to `YYYY-MM-DD` as `date`; `null` when absent), `Job Id` and `View Job URL` (kept intact, parameters included). Drop results whose `date` is older than 14 days.
+3. **The URL is a tracking short link (`to.indeed.com/...`) that changes on every call**, so URL dedup never matches an Indeed job; dedup relies on the company+title check `scrape_state.py` already runs. Never treat an Indeed URL mismatch as a new posting.
 
 #### 1c. WebSearch fallback
 
@@ -113,6 +125,8 @@ such a job, never silently drop it: write its entry to `job_scraper/seen_jobs.js
 looks identical to a job never seen, and the recorded status is what makes a later
 ghost report self-triaging. `isActive: true` is only the absence of that banner, not
 proof the posting is open; deadlines and dead URLs remain `/rank`'s job.
+
+**From the Indeed connector:** for each selected `indeed-connector` hit, call `get_job_details` with its `Job Id` in this same session (IDs from an earlier session are invalid). Compute its key with `python3 tools/job_key.py --company "<company>" --title "<title>" --url "<url>"` and save the returned description text verbatim, with the title/company/location/posted header, to `job_scraper/postings/indeed/<key>.md` (Write tool). This saved copy is the posting of record: the short link usually lands on an Indeed page that blocks fetching, so `/rank` and `/daily` read this file instead of the URL. Extract requirements and deadline from it as for any detail fetch. A hit whose detail call fails is not stored this run (it will be found again next run).
 
 **From WebSearch results:** Use `WebFetch` on the posting URL and extract the same
 fields manually. If it returns HTTP 403, retry with browser headers via `python3 tools/fetch_page.py` per
@@ -189,7 +203,7 @@ The tool rechecks deduplication against the current state and tracker, computes 
 
 The `portal` field records which CLI skill produced the job (results are already tagged per portal in Step 1b - persist that tag here). Entries written before this field existed lack it; the health check (Step 4.75) attributes those by matching the URL's domain against each portal's base URL, so do not backfill.
 
-The `source` field records which mechanism produced the entry: `cli` for Step 1b portal-CLI output, `websearch` for the Step 1c fallback. This is what keeps a ghost-job report diagnosable after the run's summary is gone: a stored entry whose URL later resolves to nothing (or to a different job) reads very differently depending on whether it came from live CLI output or from a search index that can be weeks stale - and a presented job with no entry here at all points at fabrication, which Rule 1 forbids. Entries written before this field existed lack it; never backfill it - the mechanism was not recorded.
+The `source` field records which mechanism produced the entry: `cli` for Step 1b portal-CLI output, `websearch` for the Step 1c fallback. This is what keeps a ghost-job report diagnosable after the run's summary is gone: a stored entry whose URL later resolves to nothing (or to a different job) reads very differently depending on whether it came from live CLI output or from a search index that can be weeks stale - and a presented job with no entry here at all points at fabrication, which Rule 1 forbids. Entries written before this field existed lack it; never backfill it - the mechanism was not recorded. A third value, `connector`, marks Step 1b-2 output from an MCP connector (portal `indeed-connector`).
 
 `/rank` extends this schema additively: ranked entries also carry `rank_score` (0–100 overall score), `rank_verdict` (fit band, e.g. "strong fit"), `rank_date` (ISO date of ranking), the veto fields `location_verdict` and `language_gate` (both PASS/FAIL/FLAG) with `language_note` (the quoted requirement explaining a non-PASS), and `strengths`/`gaps` (1-3 verbatim bullets each, copied from the scoring agent's findings). The `status` field is set to `"ranked"`. Do not drop any of these fields when re-writing entries. Entries ranked before `strengths`/`gaps` existed simply lack them; readers tolerate their absence and never backfill by guessing. Entries ranked before the verdict rename may carry a legacy PASS/FAIL/FLAG string in `location` - read that as the verdict when `location_verdict` is absent; in fresh entries `location` is always a place, never a verdict.
 
@@ -231,7 +245,7 @@ Scraper-based portal CLIs rot silently: when a portal changes its markup, the pa
 **Free pass (no extra requests).** For each enabled portal that ran in Step 1b:
 
 - **Degraded scan:** inspect the results it returned this run. Flags: `company` null or empty on every result, empty titles, undecoded entities (`&amp;`) or HTML fragments in titles, URLs that do not point at the portal. Any of these means the parser is half-working and `/scrape` is silently collecting junk.
-- **Yield history:** if the portal returned zero results across all of this run's queries, run `python3 tools/scrape_state.py history --portal <skill-name> --domain <portal-host>` (the host from that portal's documented base URL). It counts prior `job_scraper/seen_jobs.json` entries by `portal`, or by URL host for entries predating that field, without loading the history into context. A portal that produced jobs on earlier runs and produces nothing now is suspect - the same queries worked before.
+- **Yield history:** if the portal returned zero results across all of this run's queries, run `python3 tools/scrape_state.py history --portal <skill-name> --domain <portal-host>` (the host from that portal's documented base URL; `indeed.com` for `indeed-connector`). It counts prior `job_scraper/seen_jobs.json` entries by `portal`, or by URL host for entries predating that field, without loading the history into context. A portal that produced jobs on earlier runs and produces nothing now is suspect - the same queries worked before.
 
 **Escalation (bounded, on suspicion only).** A suspect portal gets **one** sentinel probe: run its documented `search` with the example query from its own SKILL.md (that query provably worked when the skill was registered), the portal's limit flag capped at 3, `--format json`. If that returns nothing, retry **once** with a single common word. Only then is the verdict **broken**. A 429 or block page is **never** evidence of breakage - record the portal as **inconclusive (rate-limited)**, back off, and do not retry.
 

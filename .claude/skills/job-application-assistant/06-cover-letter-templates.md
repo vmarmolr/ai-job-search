@@ -123,6 +123,15 @@ The font wrapper is mandatory — if you just move `\begin{itemize}` outside `\l
 | `\closing{text}` | Closing line |
 | `\signature{name}` | Printed name below signature |
 
+## Voice
+
+Read the user's own past letters if there are any under `documents/`, and match how they write. In general:
+- **Prose over bullets.** Three or four plain paragraphs read better than a list with bold labels.
+- **Specific opening.** Tie the role to something the candidate actually lived, not a slogan.
+- **Bridge gaps, don't lead with them.** Name what covers the requirement before saying what is missing, and never invent the bridge.
+- **Concrete proof.** Use one or two real numbers from the candidate profile.
+- **Avoid AI tells:** "I do not just X. I Y." contrasts, aphorism openers, sports metaphors, "ideal fit".
+
 ## Tailoring Guidelines
 
 ### Salutation

@@ -111,6 +111,8 @@ Does this role advance career goals and contain tasks that energize?
 - [YOUR_CAREER_GOAL_2]
 - [YOUR_CAREER_GOAL_3]
 
+**Key scoring question:** how much of the day goes to the work the candidate wants to do, versus routine tasks? Weigh this above how attractive the title sounds. A strong title that is really routine administration scores low on Career Alignment.
+
 **Motivation filter:** Evaluate not just whether you *can* do the tasks, but whether the tasks will *energize* you. Consider:
 - Tasks that energize: [YOUR_ENERGIZING_TASKS]
 - Tasks that drain: [YOUR_DRAINING_TASKS]

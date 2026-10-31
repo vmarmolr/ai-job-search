@@ -113,7 +113,7 @@ def run(args) -> int:
                 raise ValueError(f"job needs {field} before storage")
         if job["fit"] not in ("high", "medium", "low") or job["status"] not in ("new", "skipped", "expired"):
             raise ValueError("job has an invalid fit or status")
-        if job["source"] not in ("cli", "websearch") or not isinstance(job["portal"], str):
+        if job["source"] not in ("cli", "websearch", "connector") or not isinstance(job["portal"], str):
             raise ValueError("job has an invalid portal or source")
         key = make_key(job["company"], job["title"], job["url"])
         if key in seen:
