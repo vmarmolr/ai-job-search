@@ -1,0 +1,16 @@
+{
+  "_comment": "Single source of the job titles and places tools/ats_search.py keeps. Patterns are case-insensitive Python regexes matched against the title or location. A title is kept when it matches a family and not `exclude`. Replace these examples with your own; positions listed in your watchlist note (tools/watchlist.py) are added at run time.",
+  "families": {
+    "insights_research": "\\binsights?\\b|market research",
+    "analytics": "\\banalytics\\b|data analyst"
+  },
+  "exclude": "\\bintern(ship)?\\b|\\bstudent\\b",
+  "entry_level": "\\b(junior|jr\\.?|associate|graduate|analyst)\\b",
+  "entry_exclude": "\\b(senior|sr\\.?|lead|principal|director|manager|head)\\b",
+  "target_companies": "example company",
+  "locations": {
+    "include": "^copenhagen\\b|\\bremote\\b",
+    "exclude": "$^",
+    "remote_must_allow": "denmark|europe|emea"
+  }
+}

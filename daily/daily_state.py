@@ -37,6 +37,12 @@ def focus_pattern() -> re.Pattern | None:
         return None
     lines = (line.split("#")[0].strip() for line in FOCUS_FILE.read_text(encoding="utf-8").splitlines())
     terms = [re.escape(line) for line in lines if line]
+    try:  # positions from the user's watchlist note count as focus roles too
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
+        import watchlist
+        terms += [re.escape(title) for title in watchlist.load()["titles"]]
+    except ImportError:
+        pass
     return re.compile("|".join(terms), re.IGNORECASE) if terms else None
 
 

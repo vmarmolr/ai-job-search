@@ -138,3 +138,6 @@ daily/tracker_data.json
 daily/tracker_data.json.tmp
 daily/focus_roles.txt
 Open Daily Jobs.exe
+
+# Machine-specific pointer to the watchlist note (tools/watchlist.py)
+**/job_scraper/watchlist_path.txt

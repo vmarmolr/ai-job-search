@@ -1,0 +1,5 @@
+{
+  "_comment": "Employers read by tools/ats_search.py. Add an employer only after a live test shows the feed is really theirs: some systems answer 200 for any slug. Entry shapes: {\"company\": \"Name\", \"ats\": \"greenhouse|lever|ashby|smartrecruiters\", \"slug\": \"board-slug\"}; Workday adds \"tenant\", \"wd\" (the number in wdN) and \"site\", plus an optional \"search\" to narrow a large tenant; Oracle Recruiting Cloud uses \"ats\": \"oracle\" with \"host\" and \"site\" (e.g. CX_1). A job board is one entry too: {\"company\": \"Eluta\", \"ats\": \"eluta\", \"slug\": \"eluta\", \"place\": \"<city>\", \"queries\": [\"<title>\"]} (eluta.ca, Canadian jobs; hits are leads). Companies in your watchlist note with a recognised board URL are added at run time.",
+  "companies": [],
+  "unmapped": []
+}

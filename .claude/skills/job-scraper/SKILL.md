@@ -88,6 +88,18 @@ Call these tools from the main session, not from an Agent: subagents do not get 
 2. Parse each result's `Job Title`, `Company`, `Location`, `Posted on` (convert to `YYYY-MM-DD` as `date`; `null` when absent), `Job Id` and `View Job URL` (kept intact, parameters included). Drop results whose `date` is older than 14 days.
 3. **The URL is a tracking short link (`to.indeed.com/...`) that changes on every call**, so URL dedup never matches an Indeed job; dedup relies on the company+title check `scrape_state.py` already runs. Never treat an Indeed URL mismatch as a new posting.
 
+#### 1b-3. Employer feeds, eluta and the watchlist (optional)
+
+If `job_scraper/ats_companies.json` lists at least one company, run this once per scrape. It reads those employers' public job feeds (Greenhouse, Lever, Ashby, SmartRecruiters, Workday, Oracle Recruiting Cloud) and the eluta.ca board with no browser and no model, and filters them by `target-titles.json` (this directory). It can take a few minutes, so run it in the background or with a 10-minute timeout:
+
+```bash
+python3 tools/ats_search.py --out "<temporary ats hits.json>"
+```
+
+Merge the hits into the Step 2 pool; each already carries `portal` = `ats-<ats>` and `source` = `ats`, and its `date` becomes `posted_date` in Step 4. A failed or rate-limited employer is logged and the run continues: report it and never retry a 429. An eluta hit is a lead: its URL is a script page with no posting text, so find the posting on the employer's careers site, and never fetch more eluta pages by hand.
+
+Then run `python3 tools/watchlist.py`: the user's own watchlist note of companies and positions (see that script's docstring for the format and where the note lives). Search each entry of `titles` like the default titles on every enabled portal. For each entry of `companies` with `"feed": null`, search the company name with the user's target titles on the same portals, and when it has a `url`, read that careers page once with `python3 tools/fetch_page.py <url> --text`. Companies with a `feed` are already read by `ats_search.py`. Empty lists mean no extra searches.
+
 #### 1c. WebSearch fallback
 
 Use `WebSearch` for:
